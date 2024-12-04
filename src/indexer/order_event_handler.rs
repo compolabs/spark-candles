@@ -26,25 +26,27 @@ pub struct PangeaOrderEvent {
     pub limit_type: Option<String>,
 }
 
-pub async fn handle_order_event(
-    candle_store: Arc<CandleStore>,
-    event: PangeaOrderEvent,
-) {
+pub async fn handle_order_event(candle_store: Arc<CandleStore>, event: PangeaOrderEvent) {
     if let Some(event_type) = event.event_type.as_deref() {
         if event_type == "Trade" {
-                if let (Some(price), Some(amount)) = (event.price, event.amount) {
-                    let asset = "ETHUSDC"; 
-                    let block_timestamp = event.block_timestamp;
-                    let intervals = vec![60, 180, 300, 900, 1800, 3600, 86400, 604800, 2592000];
-                    for &interval in &intervals {
-                        candle_store.add_price(asset, interval, price as f64, amount as f64, block_timestamp);
-                    }
-                } else {
-                    error!("Incomplete Trade event data: {:?}", event);
+            if let (Some(price), Some(amount)) = (event.price, event.amount) {
+                let asset = "ETHUSDC";
+                let block_timestamp = event.block_timestamp;
+                let intervals = vec![60, 180, 300, 900, 1800, 3600, 86400, 604800, 2592000];
+                for &interval in &intervals {
+                    candle_store.add_price(
+                        asset,
+                        interval,
+                        price as f64,
+                        amount as f64,
+                        block_timestamp,
+                    );
                 }
+            } else {
+                error!("Incomplete Trade event data: {:?}", event);
             }
+        }
     } else {
         error!("Event type is missing in event: {:?}", event);
     }
 }
-

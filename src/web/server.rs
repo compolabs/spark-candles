@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::net::Ipv4Addr;
+use std::sync::Arc;
 
 use crate::storage::candles::CandleStore;
 use crate::web::routes::{get_docs, get_routes};
@@ -13,7 +13,7 @@ pub struct CORS;
 
 #[rocket::async_trait]
 impl Fairing for CORS {
-    fn info(&self) -> Info{
+    fn info(&self) -> Info {
         Info {
             name: "Add CORS headers to responses",
             kind: Kind::Response,

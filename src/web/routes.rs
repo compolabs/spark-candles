@@ -10,16 +10,15 @@ use serde_json::{json, Value};
 
 use crate::storage::candles::CandleStore;
 
-
 #[derive(serde::Serialize, JsonSchema)]
 pub struct AdvancedChartResponse {
-    s: String,            // Статус ("ok" или "no_data")
-    t: Vec<u64>,          // Временные метки
-    o: Vec<f64>,          // Открытие
-    h: Vec<f64>,          // Максимум
-    l: Vec<f64>,          // Минимум
-    c: Vec<f64>,          // Закрытие
-    v: Vec<f64>,          // Объём
+    s: String,   // Статус ("ok" или "no_data")
+    t: Vec<u64>, // Временные метки
+    o: Vec<f64>, // Открытие
+    h: Vec<f64>, // Максимум
+    l: Vec<f64>, // Минимум
+    c: Vec<f64>, // Закрытие
+    v: Vec<f64>, // Объём
 }
 
 #[openapi]
@@ -28,8 +27,6 @@ fn get_timestamps(candle_store: &State<Arc<CandleStore>>) -> Json<Option<(i64, i
     let min_max = candle_store.get_min_max_timestamps();
     Json(min_max)
 }
-
-
 
 #[derive(Serialize, JsonSchema)]
 struct ConfigResponse {
@@ -102,7 +99,6 @@ fn get_config() -> Json<ConfigResponse> {
     Json(config)
 }
 
-
 #[openapi]
 #[get("/time")]
 fn get_time() -> Json<u64> {
@@ -128,7 +124,6 @@ pub struct SymbolInfo {
     pub intraday_multipliers: Vec<String>,
     pub format: String,
 }
-
 
 #[openapi]
 #[get("/symbols?<symbol>")]
@@ -236,38 +231,41 @@ fn get_symbols(symbol: Option<String>) -> Json<SymbolInfo> {
     ];
 
     // Поиск символа
-    let result = symbols.into_iter().find(|s| s.symbol == symbol).unwrap_or_else(|| SymbolInfo {
-        symbol: "AAPL".to_string(),
-        ticker: "AAPL".to_string(),
-        name: "Apple Inc.".to_string(),
-        description: "Apple Stock".to_string(),
-        type_: "stock".to_string(),
-        exchange: "NASDAQ".to_string(),
-        timezone: "America/New_York".to_string(),
-        minmov: 1,
-        pricescale: 100,
-        session: "0930-1600".to_string(),
-        has_intraday: true,
-        has_daily: true,
-        supported_resolutions: vec![
-            "1".to_string(),
-            "5".to_string(),
-            "15".to_string(),
-            "30".to_string(),
-            "60".to_string(),
-            "D".to_string(),
-            "W".to_string(),
-            "M".to_string(),
-        ],
-        intraday_multipliers: vec![
-            "1".to_string(),
-            "5".to_string(),
-            "15".to_string(),
-            "30".to_string(),
-            "60".to_string(),
-        ],
-        format: "price".to_string(),
-    });
+    let result = symbols
+        .into_iter()
+        .find(|s| s.symbol == symbol)
+        .unwrap_or_else(|| SymbolInfo {
+            symbol: "AAPL".to_string(),
+            ticker: "AAPL".to_string(),
+            name: "Apple Inc.".to_string(),
+            description: "Apple Stock".to_string(),
+            type_: "stock".to_string(),
+            exchange: "NASDAQ".to_string(),
+            timezone: "America/New_York".to_string(),
+            minmov: 1,
+            pricescale: 100,
+            session: "0930-1600".to_string(),
+            has_intraday: true,
+            has_daily: true,
+            supported_resolutions: vec![
+                "1".to_string(),
+                "5".to_string(),
+                "15".to_string(),
+                "30".to_string(),
+                "60".to_string(),
+                "D".to_string(),
+                "W".to_string(),
+                "M".to_string(),
+            ],
+            intraday_multipliers: vec![
+                "1".to_string(),
+                "5".to_string(),
+                "15".to_string(),
+                "30".to_string(),
+                "60".to_string(),
+            ],
+            format: "price".to_string(),
+        });
 
     Json(result)
 }
@@ -321,15 +319,13 @@ fn get_history(
     // Retrieve candles from CandleStore
     let candles = candle_store.get_candles_in_time_range(&symbol, interval, from, to);
     info!("candles: {:?}", candles.len());
-    let candles_all = candle_store
-        .get_candles(&symbol, interval, usize::MAX);
+    let candles_all = candle_store.get_candles(&symbol, interval, usize::MAX);
     info!("----");
     info!("candles_all: {:?}", candles_all.len());
     let min_timestamp = candles_all.clone().into_iter().min_by_key(|a| a.timestamp);
     info!("min_timestamp_all: {:?}", min_timestamp);
     let max_timestamp = candles_all.into_iter().max_by_key(|a| a.timestamp);
     info!("max_timestamp_all: {:?}", max_timestamp);
-
 
     if candles.is_empty() {
         warn!(
@@ -351,7 +347,10 @@ fn get_history(
     //
     let decimals = 9;
     let divisor = 10u64.pow(decimals as u32) as f64;
-    let t: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
+    let t: Vec<u64> = candles
+        .iter()
+        .map(|c| c.timestamp.timestamp() as u64)
+        .collect();
     let o: Vec<f64> = candles.iter().map(|c| c.open / divisor).collect();
     let h: Vec<f64> = candles.iter().map(|c| c.high / divisor).collect();
     let l: Vec<f64> = candles.iter().map(|c| c.low / divisor).collect();
@@ -380,7 +379,6 @@ fn get_history(
     })
 }
 
-
 #[openapi]
 #[get("/symbols_meta")]
 fn get_symbols_meta(candle_store: &State<Arc<CandleStore>>) -> Json<Value> {
@@ -407,15 +405,17 @@ fn get_timestamps_meta(
     interval: u64,
 ) -> Json<Value> {
     // Получаем все свечи в заданном интервале
-    let candles = candle_store
-        .get_candles_in_time_range(&symbol, interval, 0, i64::MAX);
+    let candles = candle_store.get_candles_in_time_range(&symbol, interval, 0, i64::MAX);
 
     if candles.is_empty() {
         return Json(json!({ "status": "no_data" }));
     }
 
     // Извлекаем временные метки
-    let mut timestamps: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
+    let mut timestamps: Vec<u64> = candles
+        .iter()
+        .map(|c| c.timestamp.timestamp() as u64)
+        .collect();
 
     // Гарантируем сортировку временных меток
     timestamps.sort();
@@ -445,8 +445,7 @@ fn get_all_candles(
     symbol: String,
     interval: u64,
 ) -> Json<Value> {
-    let candles = candle_store
-        .get_candles(&symbol, interval, usize::MAX);
+    let candles = candle_store.get_candles(&symbol, interval, usize::MAX);
 
     if candles.is_empty() {
         return Json(json!({
@@ -457,14 +456,16 @@ fn get_all_candles(
 
     let candles_json: Vec<_> = candles
         .iter()
-        .map(|c| json!({
-            "timestamp": c.timestamp.timestamp(),
-            "open": c.open,
-            "high": c.high,
-            "low": c.low,
-            "close": c.close,
-            "volume": c.volume,
-        }))
+        .map(|c| {
+            json!({
+                "timestamp": c.timestamp.timestamp(),
+                "open": c.open,
+                "high": c.high,
+                "low": c.low,
+                "close": c.close,
+                "volume": c.volume,
+            })
+        })
         .collect();
 
     Json(json!({

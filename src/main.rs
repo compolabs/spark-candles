@@ -3,8 +3,8 @@ use error::Error;
 use futures_util::future::FutureExt;
 use futures_util::future::{join_all, select};
 use indexer::pangea::initialize_pangea_indexer;
-use storage::candles::CandleStore;
 use std::sync::Arc;
+use storage::candles::CandleStore;
 use tokio::signal;
 use web::server::rocket;
 
@@ -25,9 +25,7 @@ async fn main() -> Result<(), Error> {
     initialize_pangea_indexer(&mut tasks, Arc::clone(&candle_store)).await?;
 
     let port = ev("SERVER_PORT")?.parse()?;
-    let rocket_task = tokio::spawn(run_rocket_server(port,
-        Arc::clone(&candle_store)
-    ));
+    let rocket_task = tokio::spawn(run_rocket_server(port, Arc::clone(&candle_store)));
     tasks.push(rocket_task);
 
     let ctrl_c_task = tokio::spawn(async {
@@ -46,9 +44,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn run_rocket_server(port: u16,
-    candle_store: Arc<CandleStore>
-) {
+async fn run_rocket_server(port: u16, candle_store: Arc<CandleStore>) {
     let rocket = rocket(port, candle_store);
     let _ = rocket.launch().await;
 }

@@ -1,16 +1,16 @@
 use ethers_core::types::H256;
 use fuels::accounts::provider::Provider;
 use log::{error, info};
-use pangea_client::{ChainId, Client};
 use pangea_client::{
     futures::StreamExt, provider::FuelProvider, query::Bound, requests::fuel::GetSparkOrderRequest,
     ClientBuilder, Format, WsProvider,
 };
-use tokio::time::{interval, sleep};
+use pangea_client::{ChainId, Client};
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::time::{interval, sleep};
 
 use crate::config::env::ev;
 use crate::error::Error;
@@ -39,8 +39,7 @@ async fn start_pangea_indexer(candle_store: Arc<CandleStore>) -> Result<(), Erro
     let contract_h256 = H256::from_str(&ev("CONTRACT_ID")?)?;
 
     let mut last_processed_block =
-        fetch_historical_data(&client, &candle_store, 
-        contract_start_block, contract_h256).await?;
+        fetch_historical_data(&client, &candle_store, contract_start_block, contract_h256).await?;
 
     if last_processed_block == 0 {
         last_processed_block = contract_start_block;
@@ -48,15 +47,13 @@ async fn start_pangea_indexer(candle_store: Arc<CandleStore>) -> Result<(), Erro
 
     info!("Switching to listening for new orders (deltas)");
 
-    listen_for_new_deltas(&client, &candle_store,
-        last_processed_block, contract_h256).await
+    listen_for_new_deltas(&client, &candle_store, last_processed_block, contract_h256).await
 }
 
 async fn create_pangea_client() -> Result<Client<WsProvider>, Error> {
-
-    let username = ev("PANGEA_USERNAME")?; 
-    let password = ev("PANGEA_PASSWORD")?; 
-    let url = ev("PANGEA_URL")?; 
+    let username = ev("PANGEA_USERNAME")?;
+    let password = ev("PANGEA_PASSWORD")?;
+    let url = ev("PANGEA_URL")?;
 
     let client = ClientBuilder::default()
         .endpoint(&url)
@@ -72,10 +69,13 @@ async fn get_latest_block(chain_id: ChainId) -> Result<i64, Error> {
     let provider_url = match chain_id {
         ChainId::FUEL => Ok("mainnet.fuel.network"),
         ChainId::FUELTESTNET => Ok("testnet.fuel.network"),
-        _ => Err(Error::UnknownChainIdError)
+        _ => Err(Error::UnknownChainIdError),
     }?;
     let provider = Provider::connect(provider_url).await?;
-    Ok(provider.latest_block_height().await.map(|height| height as i64)?)
+    Ok(provider
+        .latest_block_height()
+        .await
+        .map(|height| height as i64)?)
 }
 
 async fn fetch_historical_data(
@@ -84,7 +84,7 @@ async fn fetch_historical_data(
     contract_start_block: i64,
     contract_h256: H256,
 ) -> Result<i64, Error> {
-    let fuel_chain = match ev("CHAIN")?.as_str() { 
+    let fuel_chain = match ev("CHAIN")?.as_str() {
         "FUEL" => ChainId::FUEL,
         _ => ChainId::FUELTESTNET,
     };
@@ -117,8 +117,7 @@ async fn fetch_historical_data(
                 Ok(data) => {
                     let data = String::from_utf8(data)?;
                     let order: PangeaOrderEvent = serde_json::from_str(&data)?;
-                    handle_order_event(candle_store.clone(), 
-                        order).await;
+                    handle_order_event(candle_store.clone(), order).await;
                 }
                 Err(e) => {
                     error!("Error in the stream of historical orders: {e}");
@@ -136,7 +135,6 @@ async fn fetch_historical_data(
     Ok(last_processed_block)
 }
 
-
 async fn listen_for_new_deltas(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -144,7 +142,7 @@ async fn listen_for_new_deltas(
     contract_h256: H256,
 ) -> Result<(), Error> {
     let mut retry_delay = Duration::from_secs(1);
-    let reconnect_interval = Duration::from_secs(10*60); 
+    let reconnect_interval = Duration::from_secs(10 * 60);
     let mut reconnect_timer = interval(reconnect_interval);
     let mut processing = false;
 
@@ -152,13 +150,13 @@ async fn listen_for_new_deltas(
         tokio::select! {
             _ = reconnect_timer.tick(), if !processing => {
                 info!("Scheduled reconnect to refresh connection...");
-                processing = false; 
+                processing = false;
                 let fuel_chain = match ev("CHAIN")?.as_str() {
                     "FUEL" => ChainId::FUEL,
                     _ => ChainId::FUELTESTNET,
                 };
                 let latest_block = get_latest_block(fuel_chain).await?;
-                let buffer_blocks = 10; 
+                let buffer_blocks = 10;
                 last_processed_block = latest_block.saturating_sub(buffer_blocks);
                 info!("Updated last_processed_block to {}", last_processed_block);
             },
@@ -226,7 +224,6 @@ async fn process_order_data(
     let data_str = String::from_utf8(data.to_vec())?;
     let order_event: PangeaOrderEvent = serde_json::from_str(&data_str)?;
     *last_processed_block = order_event.block_number;
-    handle_order_event(candle_store.clone(),
-        order_event).await;
+    handle_order_event(candle_store.clone(), order_event).await;
     Ok(())
 }

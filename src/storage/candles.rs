@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, NaiveDateTime, Utc, Datelike};
+use chrono::{DateTime, Datelike, Duration, NaiveDateTime, Utc};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -29,14 +29,7 @@ impl CandleStore {
     }
 
     /// Adds a price and volume to the candle store.
-    pub fn add_price(
-        &self,
-        symbol: &str,
-        interval: u64,
-        price: f64,
-        volume: f64,
-        event_time: i64,
-    ) {
+    pub fn add_price(&self, symbol: &str, interval: u64, price: f64, volume: f64, event_time: i64) {
         let mut candles = self.candles.write().unwrap();
 
         // Get the candles for the specified symbol and interval
