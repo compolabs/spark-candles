@@ -1,14 +1,11 @@
-use std::path::Path;
 use std::sync::Arc;
 use std::net::Ipv4Addr;
 
 use crate::storage::candles::CandleStore;
 use crate::web::routes::{get_docs, get_routes};
-use async_graphql::Schema;
 use rocket::fairing::{Fairing, Info, Kind};
-use rocket::fs::{FileServer, NamedFile};
 use rocket::http::Header;
-use rocket::{get, routes, Build, Config, Rocket};
+use rocket::{Build, Config, Rocket};
 use rocket::{Request, Response};
 use rocket_okapi::swagger_ui::make_swagger_ui;
 
@@ -36,11 +33,6 @@ impl Fairing for CORS {
     }
 }
 
-#[get("/")]
-async fn index() -> Option<NamedFile> {
-    NamedFile::open(Path::new("static/index.html")).await.ok()
-}
-
 pub fn rocket(port: u16, candle_store: Arc<CandleStore>) -> Rocket<Build> {
     let config = Config {
         address: Ipv4Addr::new(0, 0, 0, 0).into(),
@@ -50,8 +42,6 @@ pub fn rocket(port: u16, candle_store: Arc<CandleStore>) -> Rocket<Build> {
 
     rocket::custom(config)
         .manage(candle_store)
-        .mount("/", routes![index]) // Добавляем маршрут для index.html
-        .mount("/static", FileServer::from("static")) // Раздаём файлы из папки static
         .mount("/", get_routes())
         .mount("/swagger", make_swagger_ui(&get_docs()))
         .attach(CORS)

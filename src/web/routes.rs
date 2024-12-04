@@ -93,9 +93,9 @@ fn get_config() -> Json<ConfigResponse> {
             "15".to_string(),
             "30".to_string(),
             "60".to_string(),
-            "D".to_string(),
-            "W".to_string(),
-            "M".to_string(),
+            "1D".to_string(),
+            "1W".to_string(),
+            "1M".to_string(),
         ],
     };
 
@@ -277,28 +277,64 @@ fn get_symbols(symbol: Option<String>) -> Json<SymbolInfo> {
 fn get_history(
     candle_store: &State<Arc<CandleStore>>,
     symbol: Option<String>,
-    resolution: Option<u64>,
-    from: Option<u64>,
-    to: Option<u64>,
+    resolution: Option<String>,
+    from: Option<i64>,
+    to: Option<i64>,
 ) -> Json<AdvancedChartResponse> {
-    // Логируем входящие параметры
+    // Log incoming parameters
     let symbol = symbol.unwrap_or_default();
-    let resolution = resolution.unwrap_or(60);
+    let resolution = resolution.unwrap_or_else(|| "60".to_string());
     let from = from.unwrap_or(0);
-    let to = to.unwrap_or(chrono::Utc::now().timestamp() as u64);
+    let to = to.unwrap_or(chrono::Utc::now().timestamp());
 
+    // Parse resolution into interval in seconds
+    let interval = match resolution.as_str() {
+        "1" => 60,
+        "3" => 180,
+        "5" => 300,
+        "15" => 900,
+        "30" => 1800,
+        "60" => 3600,
+        "1D" | "D" => 86400,
+        "1W" | "W" => 604800,
+        "1M" | "M" => 2592000, // Approximate month as 30 days
+        other => {
+            warn!("Unsupported resolution: {}", other);
+            return Json(AdvancedChartResponse {
+                s: "error".to_string(),
+                t: vec![],
+                o: vec![],
+                h: vec![],
+                l: vec![],
+                c: vec![],
+                v: vec![],
+            });
+        }
+    };
+
+    info!("==========================");
     info!(
-        "Received /history request: symbol={}, resolution={}, from={}, to={}",
-        symbol, resolution, from, to
+        "Received /history request: symbol={}, resolution={}, interval={}, from={}, to={}",
+        symbol, resolution, interval, from, to
     );
 
-    // Проверяем данные в CandleStore
-    let candles = candle_store.get_candles_in_time_range_mils(&symbol, resolution, from, to);
+    // Retrieve candles from CandleStore
+    let candles = candle_store.get_candles_in_time_range(&symbol, interval, from, to);
+    info!("candles: {:?}", candles.len());
+    let candles_all = candle_store
+        .get_candles(&symbol, interval, usize::MAX);
+    info!("----");
+    info!("candles_all: {:?}", candles_all.len());
+    let min_timestamp = candles_all.clone().into_iter().min_by_key(|a| a.timestamp);
+    info!("min_timestamp_all: {:?}", min_timestamp);
+    let max_timestamp = candles_all.into_iter().max_by_key(|a| a.timestamp);
+    info!("max_timestamp_all: {:?}", max_timestamp);
+
 
     if candles.is_empty() {
         warn!(
-            "No candles found for symbol={}, resolution={}, from={}, to={}",
-            symbol, resolution, from, to
+            "No candles found for symbol={}, resolution={}, interval={}, from={}, to={}",
+            symbol, resolution, interval, from, to
         );
         return Json(AdvancedChartResponse {
             s: "no_data".to_string(),
@@ -311,22 +347,27 @@ fn get_history(
         });
     }
 
-    // Формируем ответ
+    // Form the response
+    //
+    let decimals = 9;
+    let divisor = 10u64.pow(decimals as u32) as f64;
     let t: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
-    let o: Vec<f64> = candles.iter().map(|c| c.open).collect();
-    let h: Vec<f64> = candles.iter().map(|c| c.high).collect();
-    let l: Vec<f64> = candles.iter().map(|c| c.low).collect();
-    let c: Vec<f64> = candles.iter().map(|c| c.close).collect();
-    let v: Vec<f64> = candles.iter().map(|c| c.volume).collect();
+    let o: Vec<f64> = candles.iter().map(|c| c.open / divisor).collect();
+    let h: Vec<f64> = candles.iter().map(|c| c.high / divisor).collect();
+    let l: Vec<f64> = candles.iter().map(|c| c.low / divisor).collect();
+    let c: Vec<f64> = candles.iter().map(|c| c.close / divisor).collect();
+    let v: Vec<f64> = candles.iter().map(|c| c.volume / divisor).collect();
 
     info!(
-        "Returning {} candles for symbol={}, resolution={}, from={}, to={}",
+        "Returning {} candles for symbol={}, resolution={}, interval={}, from={}, to={}",
         candles.len(),
         symbol,
         resolution,
+        interval,
         from,
         to
     );
+    info!("==========================");
 
     Json(AdvancedChartResponse {
         s: "ok".to_string(),
@@ -337,51 +378,6 @@ fn get_history(
         c,
         v,
     })
-}
-
-#[openapi]
-#[get("/candles?<symbol>&<interval>&<from>&<to>")]
-pub fn get_candles(
-    candle_store: &State<Arc<CandleStore>>,
-    symbol: String,
-    interval: u64,
-    from: u64,
-    to: u64,
-) -> Json<AdvancedChartResponse> {
-    let candles = candle_store
-        .get_candles_in_time_range_mils(&symbol, interval, from, to);
-    //info!("=====================");
-    //info!("candle_store: {:?}", candle_store);
-    //info!("=====================");
-
-    if candles.is_empty() {
-        Json(AdvancedChartResponse {
-            s: "no_data".to_string(),
-            t: vec![],
-            o: vec![],
-            h: vec![],
-            l: vec![],
-            c: vec![],
-            v: vec![],
-        })
-    } else {
-        let t: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
-        let o: Vec<f64> = candles.iter().map(|c| c.open).collect();
-        let h: Vec<f64> = candles.iter().map(|c| c.high).collect();
-        let l: Vec<f64> = candles.iter().map(|c| c.low).collect();
-        let c: Vec<f64> = candles.iter().map(|c| c.close).collect();
-        let v: Vec<f64> = candles.iter().map(|c| c.volume).collect();
-
-        Json(AdvancedChartResponse {
-            s: "ok".to_string(),
-            t,
-            o,
-            h,
-            l,
-            c,
-            v,
-        })
-    }
 }
 
 
@@ -412,7 +408,7 @@ fn get_timestamps_meta(
 ) -> Json<Value> {
     // Получаем все свечи в заданном интервале
     let candles = candle_store
-        .get_candles_in_time_range_mils(&symbol, interval, 0, u64::MAX);
+        .get_candles_in_time_range(&symbol, interval, 0, i64::MAX);
 
     if candles.is_empty() {
         return Json(json!({ "status": "no_data" }));
@@ -442,17 +438,53 @@ fn get_timestamps_meta(
     Json(meta)
 }
 
+#[openapi]
+#[get("/candles?<symbol>&<interval>")]
+fn get_all_candles(
+    candle_store: &State<Arc<CandleStore>>,
+    symbol: String,
+    interval: u64,
+) -> Json<Value> {
+    let candles = candle_store
+        .get_candles(&symbol, interval, usize::MAX);
+
+    if candles.is_empty() {
+        return Json(json!({
+            "status": "no_data",
+            "message": format!("No candles found for symbol={}, interval={}", symbol, interval),
+        }));
+    }
+
+    let candles_json: Vec<_> = candles
+        .iter()
+        .map(|c| json!({
+            "timestamp": c.timestamp.timestamp(),
+            "open": c.open,
+            "high": c.high,
+            "low": c.low,
+            "close": c.close,
+            "volume": c.volume,
+        }))
+        .collect();
+
+    Json(json!({
+        "status": "ok",
+        "symbol": symbol,
+        "interval": interval,
+        "candles": candles_json,
+    }))
+}
 
 pub fn get_routes() -> Vec<Route> {
     openapi_get_routes![
         get_config,
         get_time,
         get_symbols,
-        get_candles,
         get_timestamps,
         get_history,
         get_symbols_meta,
-        get_timestamps_meta
+        get_timestamps_meta,
+        get_all_candles
     ]
 }
 

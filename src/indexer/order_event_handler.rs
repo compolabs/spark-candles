@@ -30,32 +30,33 @@ pub async fn handle_order_event(
     event: PangeaOrderEvent,
 ) {
     if let Some(event_type) = event.event_type.as_deref() {
-        match event_type {
-            "Trade" => {
+        if event_type == "Trade" {
                 if let (Some(price), Some(amount)) = (event.price, event.amount) {
-                    let asset = "AAPL"; // Фиксированный символ
-                    let genesis_block = 0; // Блок, соответствующий `genesis_timestamp`
-                    let genesis_timestamp = 1724996333; // Unix timestamp первого блока
+                    let asset = "AAPL"; 
+                    let genesis_block = 1; 
+                    let genesis_timestamp = 1724996333; 
 
-                    // Вычисляем точное время события
-                    let event_time = genesis_timestamp + (event.block_number - genesis_block) as i64;
-
-                    info!(
-                        "Processing Trade event for asset: {}, price: {}, amount: {}, time: {}",
-                        asset, price, amount, event_time
-                    );
-
-                    // Поддерживаемые интервалы свечей (1m, 3m, 5m, 15m, 1h, 1d, 1w)
-                    let intervals = vec![60, 180, 300, 900, 3600, 86400, 604800];
+                    
+                    let event_time = genesis_timestamp + (event.block_number - genesis_block);
+                    info!("================new event");
+                    info!("genesis_timestamp: {:?}", genesis_timestamp);
+                    info!("event_block_number: {:?}", event.block_number);
+                    info!("event_time: {:?}", event_time);
+                    info!("----------------new event");
+                    let intervals = vec![60, 180, 300, 900, 1800, 3600, 86400, 604800, 2592000];
                     for &interval in &intervals {
+                        println!("=====================< INTERVAL {:?}", interval);
+                        println!(
+                            "Adding price to CandleStore: symbol={}, interval={}, price={}, amount={}, event_time={}",
+                            asset, interval, price, amount, event_time
+                        );
+                        println!("===================== INTERVAL {:?} >", interval);
                         candle_store.add_price(asset, interval, price as f64, amount as f64, event_time);
                     }
                 } else {
                     error!("Incomplete Trade event data: {:?}", event);
                 }
             }
-            _ => {}
-        }
     } else {
         error!("Event type is missing in event: {:?}", event);
     }
