@@ -34,7 +34,7 @@ serviceAccount:
 
 ingress:
   enabled: false
-  className: cilium
+  className: nginx
   annotations:
     kubernetes.io/tls-acme: "true"
 
