@@ -128,7 +128,7 @@ pub struct SymbolInfo {
 #[openapi]
 #[get("/symbols?<symbol>")]
 fn get_symbols(symbol: Option<String>) -> Json<SymbolInfo> {
-    let symbol = symbol.unwrap_or_else(|| "AAPL".to_string()); // Используем `AAPL` по умолчанию
+    let symbol = symbol.unwrap_or_else(|| "ETHUSDC".to_string()); 
 
     let symbols = vec![
         SymbolInfo {
@@ -197,12 +197,12 @@ fn get_symbols(symbol: Option<String>) -> Json<SymbolInfo> {
         },
         // Символ для AAPL
         SymbolInfo {
-            symbol: "AAPL".to_string(),
-            ticker: "AAPL".to_string(),
-            name: "Apple Inc.".to_string(),
-            description: "Apple Stock".to_string(),
+            symbol: "ETHUSDC".to_string(),
+            ticker: "ETHUSDC".to_string(),
+            name: "Ethereum / USDC".to_string(),
+            description: "ETH to USDC".to_string(),
             type_: "stock".to_string(),
-            exchange: "NASDAQ".to_string(),
+            exchange: "ETH USDC".to_string(),
             timezone: "America/New_York".to_string(),
             minmov: 1,
             pricescale: 100,
@@ -235,12 +235,12 @@ fn get_symbols(symbol: Option<String>) -> Json<SymbolInfo> {
         .into_iter()
         .find(|s| s.symbol == symbol)
         .unwrap_or_else(|| SymbolInfo {
-            symbol: "AAPL".to_string(),
-            ticker: "AAPL".to_string(),
-            name: "Apple Inc.".to_string(),
-            description: "Apple Stock".to_string(),
+            symbol: "ETHUSDC".to_string(),
+            ticker: "ETHUSDC".to_string(),
+            name: "Ethereum USDC".to_string(),
+            description: "ETH USDC".to_string(),
             type_: "stock".to_string(),
-            exchange: "NASDAQ".to_string(),
+            exchange: "ETH USDC".to_string(),
             timezone: "America/New_York".to_string(),
             minmov: 1,
             pricescale: 100,
