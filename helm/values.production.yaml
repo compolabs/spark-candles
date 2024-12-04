@@ -1,0 +1,16 @@
+replicaCount: 1
+
+ingress:
+  enabled: true
+  hosts:
+    - host: spark-candles.production.sprk.fi
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: spark-candles-tls
+      hosts:
+        - spark-candles.production.sprk.fi
+
+vault:
+  mount: production
