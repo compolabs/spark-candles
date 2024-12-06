@@ -7377,6 +7377,7 @@ dependencies = [
  "ethers-core",
  "fuel-crypto 0.57.1",
  "fuels",
+ "futures",
  "futures-util",
  "hex",
  "log",

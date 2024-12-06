@@ -3,7 +3,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PangeaOrderEvent {
     pub chain: u64,
     pub block_number: i64,

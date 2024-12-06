@@ -1,7 +1,7 @@
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
-use crate::storage::candles::CandleStore;
+use crate::storage::trading_engine::TradingEngine;
 use crate::web::routes::{get_docs, get_routes};
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::http::Header;
@@ -33,7 +33,7 @@ impl Fairing for CORS {
     }
 }
 
-pub fn rocket(port: u16, candle_store: Arc<CandleStore>) -> Rocket<Build> {
+pub fn rocket(port: u16, trading_engine: Arc<TradingEngine>) -> Rocket<Build> {
     let config = Config {
         address: Ipv4Addr::new(0, 0, 0, 0).into(),
         port,
@@ -41,8 +41,8 @@ pub fn rocket(port: u16, candle_store: Arc<CandleStore>) -> Rocket<Build> {
     };
 
     rocket::custom(config)
-        .manage(candle_store)
-        .mount("/", get_routes())
-        .mount("/swagger", make_swagger_ui(&get_docs()))
-        .attach(CORS)
+        .manage(trading_engine) // Передаём TradingEngine как State
+        .mount("/", get_routes()) // Основные маршруты
+        .mount("/swagger", make_swagger_ui(&get_docs())) // Swagger UI
+        .attach(CORS) // Добавляем поддержку CORS
 }
