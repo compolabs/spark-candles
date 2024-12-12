@@ -54,7 +54,7 @@ pub async fn initialize_pangea_indexer(
 async fn process_events_for_pair(
     config: TradingPairConfig,
     store: Arc<CandleStore>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let client = create_pangea_client().await?;
 
     let contract_h256 = H256::from_str(&config.contract_id)?;
@@ -64,6 +64,7 @@ async fn process_events_for_pair(
         &store,
         config.start_block,
         contract_h256,
+        config.symbol.clone(),
     ).await?;
 
     log::info!(
@@ -76,6 +77,7 @@ async fn process_events_for_pair(
         &store,
         last_processed_block,
         contract_h256,
+        config.symbol,
     ).await?;
 
     Ok(())
@@ -103,6 +105,7 @@ async fn fetch_historical_data(
     candle_store: &Arc<CandleStore>,
     contract_start_block: i64,
     contract_h256: H256,
+    symbol: String,
 ) -> Result<i64, Error> {
     let fuel_chain = match ev("CHAIN")?.as_str() {
         "FUEL" => ChainId::FUEL,
@@ -137,7 +140,7 @@ async fn fetch_historical_data(
                 Ok(data) => {
                     let data = String::from_utf8(data)?;
                     let order: PangeaOrderEvent = serde_json::from_str(&data)?;
-                    handle_order_event(candle_store.clone(), order).await;
+                    handle_order_event(candle_store.clone(), order, symbol.clone()).await;
                 }
                 Err(e) => {
                     error!("Error in historical orders stream: {}", e);
@@ -158,6 +161,7 @@ async fn listen_for_new_deltas(
     candle_store: &Arc<CandleStore>,
     mut last_processed_block: i64,
     contract_h256: H256,
+    symbol: String,
 ) -> Result<(), Error> {
     let mut retry_delay = Duration::from_secs(1);
     let reconnect_interval = Duration::from_secs(10 * 60);
@@ -203,7 +207,7 @@ async fn listen_for_new_deltas(
                                     let data_str = String::from_utf8(data.to_vec())?;
                                     let order_event: PangeaOrderEvent = serde_json::from_str(&data_str)?;
                                     let event_bl_num = order_event.block_number;
-                                    handle_order_event(candle_store.clone(), order_event).await;
+                                    handle_order_event(candle_store.clone(), order_event, symbol.clone()).await;
                                     last_processed_block = event_bl_num;
                                 }
                                 Err(e) => {

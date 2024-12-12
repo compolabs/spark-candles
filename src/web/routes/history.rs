@@ -4,6 +4,7 @@ use rocket::serde::json::Json;
 use rocket::{get, State};
 use serde_json::json;
 use rocket_okapi::openapi; 
+use log::info;
 
 use crate::storage::trading_engine::TradingEngine;
 
@@ -36,6 +37,18 @@ pub async fn get_history(
 
     if let Some(store) = trading_engine.get_store(&symbol) {
         let candles = store.get_candles_in_time_range(&symbol, interval, from, to);
+        info!("=============================================");
+        let candles_read = store.candles.read().unwrap(); // Захватываем RwLockReadGuard
+        let keys: Vec<_> = candles_read.keys().cloned().collect(); // Сохраняем ключи в отдельный контейнер
+        info!("keys: {:?}", keys); // Теперь используем безопасно
+        let candles_all = store.get_candles(&symbol, interval, usize::MAX);
+        info!("----");
+        info!("candles_all: {:?}", candles_all.len());
+        let min_timestamp = candles_all.clone().into_iter().min_by_key(|a| a.timestamp);
+        info!("min_timestamp_all: {:?}", min_timestamp);
+        let max_timestamp = candles_all.into_iter().max_by_key(|a| a.timestamp);
+        info!("max_timestamp_all: {:?}", max_timestamp);
+        info!("=============================================");
         if candles.is_empty() {
             return Json(json!({ "status": "no_data" }));
         }
