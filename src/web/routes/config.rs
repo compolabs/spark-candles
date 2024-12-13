@@ -14,13 +14,19 @@ pub async fn get_config() -> Json<serde_json::Value> {
         "supported_resolutions": ["1", "5", "15", "30", "60", "1D", "1W", "1M"],
         "exchanges": [
             {
+                "value": "",
+                "name": "All Exchanges",
+                "desc": ""
+            },
+            {
                 "value": "CryptoExchange",
                 "name": "CryptoExchange",
-                "desc": "Crypto Exchange"
+                "desc": "CryptoExchange"
             }
         ],
         "symbols_types": [
-            { "name": "Crypto", "value": "crypto" },
+            { "name": "All types", "value": "" },
+            { "name": "Crypto", "value": "crypto" }
         ]
     }))
 }
