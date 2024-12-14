@@ -43,8 +43,29 @@ impl TradingEngine {
         self.stores.get(symbol).cloned()
     }
 
-    pub fn get_symbols(&self) -> Vec<String> {
-        self.configs.keys().cloned().collect()
+    pub fn get_symbols(&self) -> Vec<serde_json::Value> {
+        self.configs
+            .values()
+            .map(|config| {
+                json!({
+                    "symbol": config.symbol,
+                    "ticker": config.symbol,
+                    "name": config.description,
+                    "description": config.description,
+                    "type_": "crypto", // Подставь нужный тип, например "crypto" или "stock"
+                    "exchange": "CryptoExchange", // Зависит от твоей логики
+                    "timezone": "Etc/UTC", // Можно уточнить для каждой пары
+                    "minmov": 1, // Минимальный шаг
+                    "pricescale": 100, // Масштаб цен (изменяй при необходимости)
+                    "session": "24x7", // Торговая сессия
+                    "has_intraday": true,
+                    "has_daily": true,
+                    "supported_resolutions": ["1", "5", "15", "30", "60", "D", "W", "M"],
+                    "intraday_multipliers": ["1", "5", "15", "30", "60"],
+                    "format": "price"
+                })
+            })
+            .collect()
     }
 
     /// Возвращает метаинформацию обо всех символах.
