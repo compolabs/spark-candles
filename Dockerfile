@@ -12,6 +12,7 @@ FROM debian:bullseye-slim
 
 WORKDIR /app
 COPY --from=builder /app/target/release/spark-candles /app/
+COPY config.json /app/
 # COPY .env /app/.env
 
 RUN apt-get update && apt-get install -y libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
