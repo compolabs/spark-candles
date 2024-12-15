@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, Duration, NaiveDateTime, Utc};
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -37,8 +37,10 @@ impl CandleStore {
         let candle_list = symbol_candles.entry(interval).or_default();
 
         // Convert event_time to DateTime<Utc>
-        let event_datetime =
-            DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(event_time, 0), Utc);
+        let event_datetime = Utc
+            .timestamp_opt(event_time, 0)
+            .single()
+            .expect("Invalid timestamp");
 
         // Calculate the period start time
         let period_start = Self::get_period_start(event_datetime, interval);
@@ -101,7 +103,7 @@ impl CandleStore {
                 // For minute and hourly intervals
                 let timestamp = event_datetime.timestamp();
                 let period = timestamp - (timestamp % interval as i64);
-                DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(period, 0), Utc)
+                DateTime::from_timestamp(period, 0).expect("Invalid timestamp")
             }
             86400 => {
                 // Daily intervals
@@ -127,7 +129,7 @@ impl CandleStore {
                 // For other intervals, round down to the interval
                 let timestamp = event_datetime.timestamp();
                 let period = timestamp - (timestamp % interval as i64);
-                DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(period, 0), Utc)
+                DateTime::from_timestamp(period, 0).expect("Invalid timestamp")
             }
         }
     }

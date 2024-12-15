@@ -1,11 +1,10 @@
 use config::env::ev;
 use error::Error;
-use futures_util::future::FutureExt;
-use futures_util::future::{join_all, select};
 use indexer::pangea::initialize_pangea_indexer;
+use storage::trading_engine::{TradingEngine, TradingPairConfig};
 use std::sync::Arc;
-use storage::candles::CandleStore;
 use tokio::signal;
+use tokio::sync::broadcast;
 use web::server::rocket;
 
 pub mod config;
@@ -16,35 +15,73 @@ pub mod web;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    
     dotenv::dotenv().ok();
     env_logger::init();
 
-    let candle_store = Arc::new(CandleStore::new());
-    let mut tasks = vec![];
+    
+    let configs = TradingEngine::load_config("config.json")?;
+    let trading_engine = Arc::new(TradingEngine::new(configs.clone()));
 
-    initialize_pangea_indexer(&mut tasks, Arc::clone(&candle_store)).await?;
+    
+    let (shutdown_tx, _) = broadcast::channel(1);
 
+    
     let port = ev("SERVER_PORT")?.parse()?;
-    let rocket_task = tokio::spawn(run_rocket_server(port, Arc::clone(&candle_store)));
-    tasks.push(rocket_task);
+    let rocket_task = spawn_rocket_server(port, Arc::clone(&trading_engine), shutdown_tx.subscribe());
 
-    let ctrl_c_task = tokio::spawn(async {
-        signal::ctrl_c().await.expect("failed to listen for event");
-        println!("Ctrl+C received!");
-    });
-    tasks.push(ctrl_c_task);
+    
+    let indexer_task = spawn_indexer(configs, Arc::clone(&trading_engine), shutdown_tx.subscribe());
 
-    let shutdown_signal = signal::ctrl_c().map(|_| {
-        println!("Shutting down gracefully...");
-    });
+    
+    signal::ctrl_c().await.expect("failed to listen for Ctrl+C");
+    println!("Ctrl+C received! Initiating shutdown...");
 
-    select(join_all(tasks).boxed(), shutdown_signal.boxed()).await;
+    
+    drop(shutdown_tx);
 
-    println!("Application is shutting down.");
+    
+    if let Err(e) = rocket_task.await {
+        eprintln!("Rocket server error: {:?}", e);
+    }
+    if let Err(e) = indexer_task.await {
+        eprintln!("Indexer error: {:?}", e);
+    }
+
+    println!("Application has shut down gracefully.");
     Ok(())
 }
 
-async fn run_rocket_server(port: u16, candle_store: Arc<CandleStore>) {
-    let rocket = rocket(port, candle_store);
-    let _ = rocket.launch().await;
+fn spawn_rocket_server(
+    port: u16,
+    trading_engine: Arc<TradingEngine>,
+    mut shutdown: broadcast::Receiver<()>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        println!("Starting Rocket server on port {}", port);
+        let rocket = rocket(port, trading_engine);
+
+        tokio::select! {
+            result = rocket.launch() => {
+                if let Err(e) = result {
+                    eprintln!("Error launching Rocket server: {:?}", e);
+                }
+            }
+            _ = shutdown.recv() => {
+                println!("Shutdown signal received. Stopping Rocket server...");
+            }
+        }
+    })
+}
+
+fn spawn_indexer(
+    configs: Vec<TradingPairConfig>,
+    trading_engine: Arc<TradingEngine>,
+    mut shutdown: broadcast::Receiver<()>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        if let Err(e) = initialize_pangea_indexer(configs, trading_engine, &mut shutdown).await {
+            eprintln!("Indexer error: {:?}", e);
+        }
+    })
 }
