@@ -4,8 +4,6 @@ use rocket_okapi::openapi;
 use serde_json::json;
 use std::sync::Arc;
 
-use log::info;
-
 use crate::storage::trading_engine::TradingEngine;
 
 #[openapi]
@@ -19,14 +17,14 @@ pub async fn get_symbols(
             let symbol_data = json!({
                 "symbol": config.symbol,
                 "ticker": config.symbol,
-                "name": "Ethereum / USDC", // Вернуть старое значение
-                "description": "ETH to USDC", // Вернуть старое значение
-                "type_": "stock", // Вернуть старое значение
-                "exchange": "ETH USDC", // Вернуть старое значение
-                "timezone": "America/New_York", // Вернуть старую временную зону
+                "name": "Ethereum / USDC", 
+                "description": "ETH to USDC", 
+                "type_": "stock", 
+                "exchange": "ETH USDC", 
+                "timezone": "America/New_York", 
                 "minmov": 1,
                 "pricescale": 100,
-                "session": "0930-1600", // Вернуть старое значение
+                "session": "0930-1600", 
                 "has_intraday": true,
                 "has_daily": true,
                 "supported_resolutions": ["1", "5", "15", "30", "60", "D", "W", "M"],

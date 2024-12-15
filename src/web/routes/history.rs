@@ -2,21 +2,33 @@ use std::sync::Arc;
 use log::warn;
 use rocket::serde::json::Json;
 use rocket::{get, State};
+use schemars::JsonSchema;
 use serde_json::json;
 use rocket_okapi::openapi; 
-use log::info;
 
 use crate::storage::trading_engine::TradingEngine;
 
+#[derive(serde::Serialize, JsonSchema)]
+pub struct AdvancedChartResponse {
+    s: String,   
+    t: Vec<u64>, 
+    o: Vec<f64>, 
+    h: Vec<f64>, 
+    l: Vec<f64>, 
+    c: Vec<f64>, 
+    v: Vec<f64>, 
+}
+
 #[openapi]
-#[get("/history?<symbol>&<resolution>&<from>&<to>")]
+#[get("/history?<symbol>&<resolution>&<from>&<to>&<countback>")]
 pub async fn get_history(
     symbol: String,
     resolution: Option<String>,
     from: Option<i64>,
     to: Option<i64>,
+    countback: Option<usize>, 
     trading_engine: &State<Arc<TradingEngine>>,
-) -> Json<serde_json::Value> {
+) -> Json<AdvancedChartResponse> {
     let resolution = resolution.unwrap_or_else(|| "60".to_string());
     let from = from.unwrap_or(0);
     let to = to.unwrap_or(chrono::Utc::now().timestamp());
@@ -31,42 +43,69 @@ pub async fn get_history(
         "1W" => 604800,
         _ => {
             warn!("Unsupported resolution: {}", resolution);
-            return Json(json!({ "status": "error", "message": "Unsupported resolution" }));
+            return Json(AdvancedChartResponse {
+                s: "error".to_string(),
+                t: vec![],
+                o: vec![],
+                h: vec![],
+                l: vec![],
+                c: vec![],
+                v: vec![],
+            });
         }
     };
 
     if let Some(store) = trading_engine.get_store(&symbol) {
-        let candles = store.get_candles_in_time_range(&symbol, interval, from, to);
-        info!("=============================================");
-        let candles_read = store.candles.read().unwrap(); // Захватываем RwLockReadGuard
-        let keys: Vec<_> = candles_read.keys().cloned().collect(); // Сохраняем ключи в отдельный контейнер
-        info!("keys: {:?}", keys); // Теперь используем безопасно
-        let candles_all = store.get_candles(&symbol, interval, usize::MAX);
-        info!("----");
-        info!("candles_all: {:?}", candles_all.len());
-        let min_timestamp = candles_all.clone().into_iter().min_by_key(|a| a.timestamp);
-        info!("min_timestamp_all: {:?}", min_timestamp);
-        let max_timestamp = candles_all.into_iter().max_by_key(|a| a.timestamp);
-        info!("max_timestamp_all: {:?}", max_timestamp);
-        info!("=============================================");
-        if candles.is_empty() {
-            return Json(json!({ "status": "no_data" }));
+        
+        let mut candles = store.get_candles_in_time_range(&symbol, interval, from, to);
+
+        
+        if let Some(countback) = countback {
+            if candles.len() > countback {
+                candles = candles[candles.len() - countback..].to_vec();
+            }
         }
 
-        let response = json!({
-            "status": "ok",
-            "t": candles.iter().map(|c| c.timestamp.timestamp() as u64).collect::<Vec<_>>(),
-            "o": candles.iter().map(|c| c.open).collect::<Vec<_>>(),
-            "h": candles.iter().map(|c| c.high).collect::<Vec<_>>(),
-            "l": candles.iter().map(|c| c.low).collect::<Vec<_>>(),
-            "c": candles.iter().map(|c| c.close).collect::<Vec<_>>(),
-            "v": candles.iter().map(|c| c.volume).collect::<Vec<_>>(),
-        });
+        if candles.is_empty() {
+            return Json(AdvancedChartResponse {
+                s: "no_data".to_string(),
+                t: vec![],
+                o: vec![],
+                h: vec![],
+                l: vec![],
+                c: vec![],
+                v: vec![],
+            });
+        }
 
-        return Json(response);
+        
+        let t: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
+        let o: Vec<f64> = candles.iter().map(|c| c.open).collect();
+        let h: Vec<f64> = candles.iter().map(|c| c.high).collect();
+        let l: Vec<f64> = candles.iter().map(|c| c.low).collect();
+        let c: Vec<f64> = candles.iter().map(|c| c.close).collect();
+        let v: Vec<f64> = candles.iter().map(|c| c.volume).collect();
+
+        return Json(AdvancedChartResponse {
+            s: "ok".to_string(),
+            t,
+            o,
+            h,
+            l,
+            c,
+            v,
+        });
     }
 
-    Json(json!({ "status": "error", "message": "Symbol not found" }))
+    Json(AdvancedChartResponse {
+        s: "error".to_string(),
+        t: vec![],
+        o: vec![],
+        h: vec![],
+        l: vec![],
+        c: vec![],
+        v: vec![],
+    })
 }
 
 #[openapi]

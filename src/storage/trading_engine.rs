@@ -20,7 +20,7 @@ pub struct TradingEngine {
 }
 
 impl TradingEngine {
-    /// Создаёт новый `TradingEngine` на основе конфигурации.
+    
     pub fn new(configs: Vec<TradingPairConfig>) -> Self {
         let stores = configs
             .iter()
@@ -52,12 +52,12 @@ impl TradingEngine {
                     "ticker": config.symbol,
                     "name": config.description,
                     "description": config.description,
-                    "type_": "crypto", // Подставь нужный тип, например "crypto" или "stock"
-                    "exchange": "CryptoExchange", // Зависит от твоей логики
-                    "timezone": "Etc/UTC", // Можно уточнить для каждой пары
-                    "minmov": 1, // Минимальный шаг
-                    "pricescale": 100, // Масштаб цен (изменяй при необходимости)
-                    "session": "24x7", // Торговая сессия
+                    "type_": "crypto", 
+                    "exchange": "CryptoExchange", 
+                    "timezone": "Etc/UTC", 
+                    "minmov": 1, 
+                    "pricescale": 100, 
+                    "session": "24x7", 
                     "has_intraday": true,
                     "has_daily": true,
                     "supported_resolutions": ["1", "5", "15", "30", "60", "D", "W", "M"],
@@ -68,7 +68,7 @@ impl TradingEngine {
             .collect()
     }
 
-    /// Возвращает метаинформацию обо всех символах.
+    
     pub fn get_symbols_meta(&self) -> serde_json::Value {
         let metadata: Vec<_> = self
             .configs

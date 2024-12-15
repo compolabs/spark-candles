@@ -1,5 +1,6 @@
 pub mod config;
 pub mod history;
+pub mod search;
 pub mod symbols;
 
 use rocket::Route;
@@ -11,8 +12,9 @@ pub fn get_routes() -> Vec<Route> {
         config::get_time,
         history::get_history,
         history::get_all_candles,
+        search::search,
         symbols::get_symbols,
-        symbols::get_symbols_meta
+        symbols::get_symbols_meta,
     ]
 }
 
