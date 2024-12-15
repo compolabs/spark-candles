@@ -3,7 +3,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PangeaOrderEvent {
     pub chain: u64,
     pub block_number: i64,
@@ -26,16 +26,15 @@ pub struct PangeaOrderEvent {
     pub limit_type: Option<String>,
 }
 
-pub async fn handle_order_event(candle_store: Arc<CandleStore>, event: PangeaOrderEvent) {
+pub async fn handle_order_event(candle_store: Arc<CandleStore>, event: PangeaOrderEvent, symbol: String) {
     if let Some(event_type) = event.event_type.as_deref() {
         if event_type == "Trade" {
             if let (Some(price), Some(amount)) = (event.price, event.amount) {
-                let asset = "ETHUSDC";
                 let block_timestamp = event.block_timestamp;
                 let intervals = vec![60, 180, 300, 900, 1800, 3600, 86400, 604800, 2592000];
                 for &interval in &intervals {
                     candle_store.add_price(
-                        asset,
+                        &symbol.clone(),
                         interval,
                         price as f64,
                         amount as f64,
