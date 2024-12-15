@@ -26,7 +26,7 @@ pub async fn get_history(
     resolution: Option<String>,
     from: Option<i64>,
     to: Option<i64>,
-    countback: Option<usize>, 
+    countback: Option<usize>,
     trading_engine: &State<Arc<TradingEngine>>,
 ) -> Json<AdvancedChartResponse> {
     let resolution = resolution.unwrap_or_else(|| "60".to_string());
@@ -56,10 +56,12 @@ pub async fn get_history(
     };
 
     if let Some(store) = trading_engine.get_store(&symbol) {
-        
+        let config = trading_engine.configs.get(&symbol);
+        let decimals = config.map(|cfg| cfg.decimals).unwrap_or(9); // Дефолтное значение decimals = 9
+        let divisor = 10u64.pow(decimals as u32) as f64;
+
         let mut candles = store.get_candles_in_time_range(&symbol, interval, from, to);
 
-        
         if let Some(countback) = countback {
             if candles.len() > countback {
                 candles = candles[candles.len() - countback..].to_vec();
@@ -78,13 +80,12 @@ pub async fn get_history(
             });
         }
 
-        
         let t: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
-        let o: Vec<f64> = candles.iter().map(|c| c.open).collect();
-        let h: Vec<f64> = candles.iter().map(|c| c.high).collect();
-        let l: Vec<f64> = candles.iter().map(|c| c.low).collect();
-        let c: Vec<f64> = candles.iter().map(|c| c.close).collect();
-        let v: Vec<f64> = candles.iter().map(|c| c.volume).collect();
+        let o: Vec<f64> = candles.iter().map(|c| c.open / divisor).collect();
+        let h: Vec<f64> = candles.iter().map(|c| c.high / divisor).collect();
+        let l: Vec<f64> = candles.iter().map(|c| c.low / divisor).collect();
+        let c: Vec<f64> = candles.iter().map(|c| c.close / divisor).collect();
+        let v: Vec<f64> = candles.iter().map(|c| c.volume / divisor).collect();
 
         return Json(AdvancedChartResponse {
             s: "ok".to_string(),

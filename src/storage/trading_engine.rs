@@ -12,6 +12,7 @@ pub struct TradingPairConfig {
     pub contract_id: String,
     pub start_block: i64,
     pub description: String,
+    pub decimals: i32,
 }
 
 pub struct TradingEngine {
