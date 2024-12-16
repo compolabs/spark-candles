@@ -17,8 +17,8 @@ pub async fn get_symbols(
             let symbol_data = json!({
                 "symbol": config.symbol,
                 "ticker": config.symbol,
-                "name": "Ethereum / USDC", 
-                "description": "ETH to USDC", 
+                "name": config.symbol,
+                "description": config.symbol,
                 "type_": "stock", 
                 "exchange": "ETH USDC", 
                 "timezone": "America/New_York", 
