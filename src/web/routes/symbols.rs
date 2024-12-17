@@ -20,7 +20,7 @@ pub async fn get_symbols(
                 "name": config.symbol,
                 "description": config.symbol,
                 "type_": "stock", 
-                "exchange": "ETH USDC", 
+                "exchange": config.symbol, 
                 "timezone": "America/New_York", 
                 "minmov": 1,
                 "pricescale": 100,
