@@ -12,5 +12,12 @@
         "start_block": 7330000,
         "description": "USDCUSDT",
         "decimals": 9
+    },
+    {
+        "symbol": "FUELUSDC",
+        "contract_id": "0xdafe498b31f24ea5577055e86bf77e96bcba2c39a7ae47abaa819c303a45a352",
+        "start_block": 9330000,
+        "description": "FUELUSDC",
+        "decimals": 9
     }
 ]
