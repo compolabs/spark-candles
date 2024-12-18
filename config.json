@@ -15,8 +15,8 @@
     },
     {
         "symbol": "FUELUSDC",
-        "contract_id": "0xdafe498b31f24ea5577055e86bf77e96bcba2c39a7ae47abaa819c303a45a352",
-        "start_block": 9330000,
+        "contract_id": "0x81e83f73530c262b0dbf5414649a875c48a48144de3c08ff68cb9d54b36f2eaa",
+        "start_block": 9030000,
         "description": "FUELUSDC",
         "decimals": 9
     }
