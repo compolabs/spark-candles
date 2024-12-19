@@ -29,6 +29,8 @@ pub async fn get_symbols(
                 "has_daily": true,
                 "supported_resolutions": ["1", "5", "15", "30", "60", "D", "W", "M"],
                 "intraday_multipliers": ["1", "5", "15", "30", "60"],
+                "default_resolution": "D",
+                "pricescale": 100000,
                 "format": "price"
             });
             return Json(symbol_data);

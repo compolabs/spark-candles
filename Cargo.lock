@@ -7343,7 +7343,7 @@ dependencies = [
 
 [[package]]
 name = "spark-candles"
-version = "0.1.7"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "async-graphql",
