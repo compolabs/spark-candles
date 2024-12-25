@@ -114,7 +114,7 @@ async fn fetch_historical_data(
         "FUEL" => ChainId::FUEL,
         _ => ChainId::FUELTESTNET,
     };
-    let batch_size = 10_000;
+    let batch_size = 1_000_000;
     let mut last_processed_block = contract_start_block;
 
     let target_latest_block = get_latest_block(fuel_chain).await?;
