@@ -6,11 +6,11 @@ use pangea_client::{
     ClientBuilder, Format, WsProvider,
 };
 use pangea_client::{ChainId, Client};
-use tokio::sync::broadcast;
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::broadcast;
 use tokio::time::{interval, sleep};
 
 use crate::config::env::ev;
@@ -65,11 +65,13 @@ async fn process_events_for_pair(
         config.start_block,
         contract_h256,
         config.symbol.clone(),
-    ).await?;
+    )
+    .await?;
 
     log::info!(
         "Completed historical data fetch for {}. Last processed block: {}",
-        config.symbol, last_processed_block
+        config.symbol,
+        last_processed_block
     );
 
     listen_for_new_deltas(
@@ -78,7 +80,8 @@ async fn process_events_for_pair(
         last_processed_block,
         contract_h256,
         config.symbol,
-    ).await?;
+    )
+    .await?;
 
     Ok(())
 }

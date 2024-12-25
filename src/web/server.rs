@@ -41,8 +41,8 @@ pub fn rocket(port: u16, trading_engine: Arc<TradingEngine>) -> Rocket<Build> {
     };
 
     rocket::custom(config)
-        .manage(trading_engine) 
-        .mount("/", get_routes()) 
-        .mount("/swagger", make_swagger_ui(&get_docs())) 
-        .attach(CORS) 
+        .manage(trading_engine)
+        .mount("/", get_routes())
+        .mount("/swagger", make_swagger_ui(&get_docs()))
+        .attach(CORS)
 }

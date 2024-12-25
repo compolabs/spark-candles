@@ -26,7 +26,11 @@ pub struct PangeaOrderEvent {
     pub limit_type: Option<String>,
 }
 
-pub async fn handle_order_event(candle_store: Arc<CandleStore>, event: PangeaOrderEvent, symbol: String) {
+pub async fn handle_order_event(
+    candle_store: Arc<CandleStore>,
+    event: PangeaOrderEvent,
+    symbol: String,
+) {
     if let Some(event_type) = event.event_type.as_deref() {
         if event_type == "Trade" {
             if let (Some(price), Some(amount)) = (event.price, event.amount) {

@@ -1,22 +1,22 @@
-use std::sync::Arc;
 use log::warn;
 use rocket::serde::json::Json;
 use rocket::{get, State};
+use rocket_okapi::openapi;
 use schemars::JsonSchema;
 use serde_json::json;
-use rocket_okapi::openapi; 
+use std::sync::Arc;
 
 use crate::storage::trading_engine::TradingEngine;
 
 #[derive(serde::Serialize, JsonSchema)]
 pub struct AdvancedChartResponse {
-    s: String,   
-    t: Vec<u64>, 
-    o: Vec<f64>, 
-    h: Vec<f64>, 
-    l: Vec<f64>, 
-    c: Vec<f64>, 
-    v: Vec<f64>, 
+    s: String,
+    t: Vec<u64>,
+    o: Vec<f64>,
+    h: Vec<f64>,
+    l: Vec<f64>,
+    c: Vec<f64>,
+    v: Vec<f64>,
 }
 
 #[openapi]
@@ -80,7 +80,10 @@ pub async fn get_history(
             });
         }
 
-        let t: Vec<u64> = candles.iter().map(|c| c.timestamp.timestamp() as u64).collect();
+        let t: Vec<u64> = candles
+            .iter()
+            .map(|c| c.timestamp.timestamp() as u64)
+            .collect();
         let o: Vec<f64> = candles.iter().map(|c| c.open / divisor).collect();
         let h: Vec<f64> = candles.iter().map(|c| c.high / divisor).collect();
         let l: Vec<f64> = candles.iter().map(|c| c.low / divisor).collect();

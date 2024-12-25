@@ -1,8 +1,8 @@
 use config::env::ev;
 use error::Error;
 use indexer::pangea::initialize_pangea_indexer;
-use storage::trading_engine::{TradingEngine, TradingPairConfig};
 use std::sync::Arc;
+use storage::trading_engine::{TradingEngine, TradingPairConfig};
 use tokio::signal;
 use tokio::sync::broadcast;
 use web::server::rocket;
@@ -15,32 +15,29 @@ pub mod web;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    
     dotenv::dotenv().ok();
     env_logger::init();
 
-    
     let configs = TradingEngine::load_config("config.json")?;
     let trading_engine = Arc::new(TradingEngine::new(configs.clone()));
 
-    
     let (shutdown_tx, _) = broadcast::channel(1);
 
-    
     let port = ev("SERVER_PORT")?.parse()?;
-    let rocket_task = spawn_rocket_server(port, Arc::clone(&trading_engine), shutdown_tx.subscribe());
+    let rocket_task =
+        spawn_rocket_server(port, Arc::clone(&trading_engine), shutdown_tx.subscribe());
 
-    
-    let indexer_task = spawn_indexer(configs, Arc::clone(&trading_engine), shutdown_tx.subscribe());
+    let indexer_task = spawn_indexer(
+        configs,
+        Arc::clone(&trading_engine),
+        shutdown_tx.subscribe(),
+    );
 
-    
     signal::ctrl_c().await.expect("failed to listen for Ctrl+C");
     println!("Ctrl+C received! Initiating shutdown...");
 
-    
     drop(shutdown_tx);
 
-    
     if let Err(e) = rocket_task.await {
         eprintln!("Rocket server error: {:?}", e);
     }

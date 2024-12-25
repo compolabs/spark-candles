@@ -1,5 +1,5 @@
-use rocket::{get, State};
 use rocket::serde::json::Json;
+use rocket::{get, State};
 use rocket_okapi::openapi;
 use serde_json::json;
 use std::sync::Arc;
@@ -19,12 +19,12 @@ pub async fn get_symbols(
                 "ticker": config.symbol,
                 "name": config.symbol,
                 "description": config.symbol,
-                "type_": "crypto", 
-                "exchange": config.symbol, 
-                "timezone": "UTC", 
+                "type_": "crypto",
+                "exchange": config.symbol,
+                "timezone": "UTC",
                 "minmov": 1,
                 "pricescale": 100,
-                "session": "0000-2400", 
+                "session": "0000-2400",
                 "has_intraday": true,
                 "has_daily": true,
                 "supported_resolutions": ["1", "5", "15", "30", "60", "D", "W", "M"],
@@ -48,7 +48,9 @@ pub async fn get_symbols(
 
 #[openapi]
 #[get("/symbols_meta")]
-pub async fn get_symbols_meta(trading_engine: &State<Arc<TradingEngine>>) -> Json<serde_json::Value> {
+pub async fn get_symbols_meta(
+    trading_engine: &State<Arc<TradingEngine>>,
+) -> Json<serde_json::Value> {
     let symbols_meta = trading_engine.get_symbols_meta();
     Json(json!({ "status": "ok", "metadata": symbols_meta }))
 }

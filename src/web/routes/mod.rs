@@ -18,7 +18,6 @@ pub fn get_routes() -> Vec<Route> {
     ]
 }
 
-
 pub fn get_docs() -> SwaggerUIConfig {
     SwaggerUIConfig {
         url: "/openapi.json".to_string(),

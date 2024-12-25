@@ -21,7 +21,6 @@ pub struct TradingEngine {
 }
 
 impl TradingEngine {
-    
     pub fn new(configs: Vec<TradingPairConfig>) -> Self {
         let stores = configs
             .iter()
@@ -53,12 +52,12 @@ impl TradingEngine {
                     "ticker": config.symbol,
                     "name": config.description,
                     "description": config.description,
-                    "type_": "crypto", 
-                    "exchange": "CryptoExchange", 
-                    "timezone": "Etc/UTC", 
-                    "minmov": 1, 
-                    "pricescale": 100, 
-                    "session": "24x7", 
+                    "type_": "crypto",
+                    "exchange": "CryptoExchange",
+                    "timezone": "Etc/UTC",
+                    "minmov": 1,
+                    "pricescale": 100,
+                    "session": "24x7",
                     "has_intraday": true,
                     "has_daily": true,
                     "supported_resolutions": ["1", "5", "15", "30", "60", "D", "W", "M"],
@@ -69,7 +68,6 @@ impl TradingEngine {
             .collect()
     }
 
-    
     pub fn get_symbols_meta(&self) -> serde_json::Value {
         let metadata: Vec<_> = self
             .configs
