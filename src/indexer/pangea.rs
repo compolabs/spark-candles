@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
-use tokio::time::{interval, sleep};
+use tokio::time::sleep;
 
 use crate::config::env::ev;
 use crate::error::Error;
@@ -102,7 +102,7 @@ async fn create_pangea_client() -> Result<Client<WsProvider>, Error> {
     Ok(client)
 }
 
-/// Fetch historical data for a contract.
+/// Fetch historical data for a contract without batching.
 async fn fetch_historical_data(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -114,51 +114,44 @@ async fn fetch_historical_data(
         "FUEL" => ChainId::FUEL,
         _ => ChainId::FUELTESTNET,
     };
-    let batch_size = 1_000_000;
-    let mut last_processed_block = contract_start_block;
 
     let target_latest_block = get_latest_block(fuel_chain).await?;
-    info!("Target last block for processing: {}", target_latest_block);
+    info!(
+        "Fetching historical data from block {} to {}",
+        contract_start_block, target_latest_block
+    );
 
-    while last_processed_block < target_latest_block {
-        let to_block = (last_processed_block + batch_size).min(target_latest_block);
+    let request = GetSparkOrderRequest {
+        from_block: Bound::Exact(contract_start_block),
+        to_block: Bound::Exact(target_latest_block),
+        market_id__in: HashSet::from([contract_h256]),
+        chains: HashSet::from([fuel_chain]),
+        ..Default::default()
+    };
 
-        let request_batch = GetSparkOrderRequest {
-            from_block: Bound::Exact(last_processed_block),
-            to_block: Bound::Exact(to_block),
-            market_id__in: HashSet::from([contract_h256]),
-            chains: HashSet::from([fuel_chain]),
-            ..Default::default()
-        };
+    let stream = client
+        .get_fuel_spark_orders_by_format(request, Format::JsonStream, false)
+        .await?;
 
-        let stream_batch = client
-            .get_fuel_spark_orders_by_format(request_batch, Format::JsonStream, false)
-            .await
-            .expect("Failed to get fuel spark orders batch");
+    pangea_client::futures::pin_mut!(stream);
 
-        pangea_client::futures::pin_mut!(stream_batch);
-
-        while let Some(data) = stream_batch.next().await {
-            match data {
-                Ok(data) => {
-                    let data = String::from_utf8(data)?;
-                    let order: PangeaOrderEvent = serde_json::from_str(&data)?;
-                    handle_order_event(candle_store.clone(), order, symbol.clone()).await;
-                }
-                Err(e) => {
-                    error!("Error in historical orders stream: {}", e);
-                    break;
-                }
+    while let Some(data) = stream.next().await {
+        match data {
+            Ok(data) => {
+                let order: PangeaOrderEvent = serde_json::from_slice(&data)?;
+                handle_order_event(candle_store.clone(), order, symbol.clone()).await;
+            }
+            Err(e) => {
+                error!("Error processing historical data stream: {}", e);
+                break;
             }
         }
-
-        last_processed_block = to_block;
-        info!("Processed events up to block {}.", last_processed_block);
     }
-    Ok(last_processed_block)
+
+    Ok(target_latest_block)
 }
 
-/// Listen for new events (deltas).
+/// Listen for new events (deltas) without unnecessary reconnects.
 async fn listen_for_new_deltas(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -167,72 +160,49 @@ async fn listen_for_new_deltas(
     symbol: String,
 ) -> Result<(), Error> {
     let mut retry_delay = Duration::from_secs(1);
-    let reconnect_interval = Duration::from_secs(10 * 60);
-    let mut reconnect_timer = interval(reconnect_interval);
 
     loop {
-        tokio::select! {
-            _ = reconnect_timer.tick() => {
-                info!("Refreshing connection...");
-                let fuel_chain = match ev("CHAIN")?.as_str() {
-                    "FUEL" => ChainId::FUEL,
-                    _ => ChainId::FUELTESTNET,
-                };
-                let latest_block = get_latest_block(fuel_chain).await?;
-                let buffer_blocks = 10;
-                last_processed_block = latest_block.saturating_sub(buffer_blocks);
-                info!("Updated last_processed_block to {}", last_processed_block);
-            },
-            result = async {
-                let fuel_chain = match ev("CHAIN")?.as_str() {
-                    "FUEL" => ChainId::FUEL,
-                    _ => ChainId::FUELTESTNET,
-                };
+        let fuel_chain = match ev("CHAIN")?.as_str() {
+            "FUEL" => ChainId::FUEL,
+            _ => ChainId::FUELTESTNET,
+        };
 
-                let request_deltas = GetSparkOrderRequest {
-                    from_block: Bound::Exact(last_processed_block + 1),
-                    to_block: Bound::Subscribe,
-                    market_id__in: HashSet::from([contract_h256]),
-                    chains: HashSet::from([fuel_chain]),
-                    ..Default::default()
-                };
+        let request = GetSparkOrderRequest {
+            from_block: Bound::Exact(last_processed_block + 1),
+            to_block: Bound::Subscribe,
+            market_id__in: HashSet::from([contract_h256]),
+            chains: HashSet::from([fuel_chain]),
+            ..Default::default()
+        };
 
-                match client
-                    .get_fuel_spark_orders_by_format(request_deltas, Format::JsonStream, true)
-                    .await
-                {
-                    Ok(stream_deltas) => {
-                        pangea_client::futures::pin_mut!(stream_deltas);
+        match client
+            .get_fuel_spark_orders_by_format(request, Format::JsonStream, true)
+            .await
+        {
+            Ok(stream) => {
+                pangea_client::futures::pin_mut!(stream);
+                retry_delay = Duration::from_secs(1); // Reset retry delay on success
 
-                        while let Some(data_result) = stream_deltas.next().await {
-                            match data_result {
-                                Ok(data) => {
-                                    let data_str = String::from_utf8(data.to_vec())?;
-                                    let order_event: PangeaOrderEvent = serde_json::from_str(&data_str)?;
-                                    let event_bl_num = order_event.block_number;
-                                    handle_order_event(candle_store.clone(), order_event, symbol.clone()).await;
-                                    last_processed_block = event_bl_num;
-                                }
-                                Err(e) => {
-                                    error!("Error in new orders stream: {}", e);
-                                    break;
-                                }
-                            }
+                while let Some(data) = stream.next().await {
+                    match data {
+                        Ok(data) => {
+                            let order_event: PangeaOrderEvent = serde_json::from_slice(&data)?;
+                            last_processed_block = order_event.block_number;
+                            handle_order_event(candle_store.clone(), order_event, symbol.clone())
+                                .await;
+                        }
+                        Err(e) => {
+                            error!("Stream error: {}", e);
+                            break; // Exit the stream and reconnect
                         }
                     }
-                    Err(e) => {
-                        error!("Failed to start stream: {}", e);
-                    }
                 }
-
+            }
+            Err(e) => {
+                error!("Failed to subscribe to new deltas: {}", e);
                 sleep(retry_delay).await;
                 retry_delay = (retry_delay * 2).min(Duration::from_secs(60));
-                Ok::<(), Error>(())
-            } => {
-                if let Err(e) = result {
-                    error!("Error in listen_for_new_deltas: {:?}", e);
-                }
-            },
+            }
         }
     }
 }
