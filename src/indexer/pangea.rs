@@ -86,7 +86,6 @@ async fn process_events_for_pair(
     Ok(())
 }
 
-/// Create a Pangea WebSocket client.
 async fn create_pangea_client() -> Result<Client<WsProvider>, Error> {
     let username = ev("PANGEA_USERNAME")?;
     let password = ev("PANGEA_PASSWORD")?;
@@ -102,7 +101,6 @@ async fn create_pangea_client() -> Result<Client<WsProvider>, Error> {
     Ok(client)
 }
 
-/// Fetch historical data for a contract without batching.
 async fn fetch_historical_data(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -151,7 +149,7 @@ async fn fetch_historical_data(
     Ok(target_latest_block)
 }
 
-/// Listen for new events (deltas) without unnecessary reconnects.
+
 async fn listen_for_new_deltas(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -181,7 +179,7 @@ async fn listen_for_new_deltas(
         {
             Ok(stream) => {
                 pangea_client::futures::pin_mut!(stream);
-                retry_delay = Duration::from_secs(1); // Reset retry delay on success
+                retry_delay = Duration::from_secs(1); 
 
                 while let Some(data) = stream.next().await {
                     match data {
@@ -193,7 +191,7 @@ async fn listen_for_new_deltas(
                         }
                         Err(e) => {
                             error!("Stream error: {}", e);
-                            break; // Exit the stream and reconnect
+                            break; 
                         }
                     }
                 }
@@ -207,7 +205,7 @@ async fn listen_for_new_deltas(
     }
 }
 
-/// Get the latest block number for a chain.
+
 async fn get_latest_block(chain_id: ChainId) -> Result<i64, Error> {
     let provider_url = match chain_id {
         ChainId::FUEL => "mainnet.fuel.network",
