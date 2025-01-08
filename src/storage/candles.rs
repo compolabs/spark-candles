@@ -2,7 +2,6 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-
 #[derive(Debug, Clone)]
 pub struct Candle {
     pub open: f64,
@@ -10,18 +9,15 @@ pub struct Candle {
     pub low: f64,
     pub close: f64,
     pub volume: f64,
-    pub timestamp: DateTime<Utc>, 
+    pub timestamp: DateTime<Utc>,
 }
-
 
 #[derive(Debug)]
 pub struct CandleStore {
-    
     pub candles: RwLock<HashMap<String, HashMap<u64, Vec<Candle>>>>,
 }
 
 impl CandleStore {
-    
     pub fn new() -> Self {
         Self {
             candles: RwLock::new(HashMap::new()),
@@ -64,7 +60,7 @@ impl CandleStore {
                     volume: 0.0,
                     timestamp: missing_time,
                 };
-                candle_list.push(empty_candle); 
+                candle_list.push(empty_candle);
                 missing_time += Duration::seconds(interval as i64);
             }
         }
@@ -88,22 +84,17 @@ impl CandleStore {
     fn get_period_start(event_datetime: DateTime<Utc>, interval: u64) -> DateTime<Utc> {
         match interval {
             60 | 180 | 300 | 900 | 3600 => {
-                
                 let timestamp = event_datetime.timestamp();
                 let period = timestamp - (timestamp % interval as i64);
                 DateTime::from_timestamp(period, 0).expect("Invalid timestamp")
             }
-            86400 => {
-                
-                event_datetime
-                    .date_naive()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap()
-                    .and_local_timezone(Utc)
-                    .unwrap()
-            }
+            86400 => event_datetime
+                .date_naive()
+                .and_hms_opt(0, 0, 0)
+                .unwrap()
+                .and_local_timezone(Utc)
+                .unwrap(),
             604800 => {
-                
                 let naive_date = event_datetime.date_naive();
                 let weekday = naive_date.weekday().num_days_from_monday();
                 let start_of_week = naive_date - Duration::days(weekday as i64);
@@ -114,7 +105,6 @@ impl CandleStore {
                     .unwrap()
             }
             _ => {
-                
                 let timestamp = event_datetime.timestamp();
                 let period = timestamp - (timestamp % interval as i64);
                 DateTime::from_timestamp(period, 0).expect("Invalid timestamp")
@@ -122,7 +112,6 @@ impl CandleStore {
         }
     }
 
-    
     pub fn get_candles(&self, symbol: &str, interval: u64, count: usize) -> Vec<Candle> {
         let candles = self.candles.read().unwrap();
         if let Some(symbol_candles) = candles.get(symbol) {
@@ -133,7 +122,6 @@ impl CandleStore {
         vec![]
     }
 
-    
     pub fn get_candles_in_time_range(
         &self,
         symbol: &str,

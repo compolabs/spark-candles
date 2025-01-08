@@ -149,7 +149,6 @@ async fn fetch_historical_data(
     Ok(target_latest_block)
 }
 
-
 async fn listen_for_new_deltas(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -179,7 +178,7 @@ async fn listen_for_new_deltas(
         {
             Ok(stream) => {
                 pangea_client::futures::pin_mut!(stream);
-                retry_delay = Duration::from_secs(1); 
+                retry_delay = Duration::from_secs(1);
 
                 while let Some(data) = stream.next().await {
                     match data {
@@ -191,7 +190,7 @@ async fn listen_for_new_deltas(
                         }
                         Err(e) => {
                             error!("Stream error: {}", e);
-                            break; 
+                            break;
                         }
                     }
                 }
@@ -204,7 +203,6 @@ async fn listen_for_new_deltas(
         }
     }
 }
-
 
 async fn get_latest_block(chain_id: ChainId) -> Result<i64, Error> {
     let provider_url = match chain_id {
