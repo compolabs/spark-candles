@@ -19,5 +19,47 @@
         "start_block": 9130000,
         "description": "FUELUSDC",
         "decimals": 9
+    },
+    {
+        "symbol": "EZETHUSDC",
+        "contract_id": "0xe4f64c6a9facdce0c055ecade9379c8f425411ec3f9523a472d14ce8a4fbce38",
+        "start_block": 10130000,
+        "description": "EZETHUSDC",
+        "decimals": 9
+    },
+    {
+        "symbol": "FUELETH",
+        "contract_id": "0x4391b39d9165917faffb9dcc69d19b6952a6ebf02db593747cf2f5d8298d28c7",
+        "start_block": 10130000,
+        "description": "FUELETH",
+        "decimals": 9
+    },
+    {
+        "symbol": "PZETHUSDC",
+        "contract_id": "0x12f52412e0ef50d4e38e1d03fd80d0a88fbaa7253e47f0cc48ba4e3049bd9ce4",
+        "start_block": 10130000,
+        "description": "PZETHUSDC",
+        "decimals": 9
+    },
+    {
+        "symbol": "TRUMPETH",
+        "contract_id": "0x272bc2c2d065e8ca22f0473e328f403bb1ba2e85d71f5fa51dcb83393714ff01",
+        "start_block": 10130000,
+        "description": "TRUMPETH",
+        "decimals": 9
+    },
+    {
+        "symbol": "USDTUSDC",
+        "contract_id": "0xe4e4844f78e2e470b590d0c76ffc9f4422a87317377813a181a02c60a60bc774",
+        "start_block": 10130000,
+        "description": "USDTUSDC",
+        "decimals": 9
+    },
+    {
+        "symbol": "WETHUSDC",
+        "contract_id": "0x0bef6eb3018d901818978175feccf650b65dee8e3a8f5b59e138bcf1cf1d0db9",
+        "start_block": 10130000,
+        "description": "WETHUSDC",
+        "decimals": 9
     }
 ]
