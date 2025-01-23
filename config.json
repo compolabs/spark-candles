@@ -21,10 +21,10 @@
         "decimals": 9
     },
     {
-        "symbol": "EZETHUSDC",
+        "symbol": "ezETHUSDC",
         "contract_id": "0xe4f64c6a9facdce0c055ecade9379c8f425411ec3f9523a472d14ce8a4fbce38",
         "start_block": 10130000,
-        "description": "EZETHUSDC",
+        "description": "ezETHUSDC",
         "decimals": 9
     },
     {
@@ -35,10 +35,10 @@
         "decimals": 9
     },
     {
-        "symbol": "PZETHUSDC",
+        "symbol": "pzETHUSDC",
         "contract_id": "0x12f52412e0ef50d4e38e1d03fd80d0a88fbaa7253e47f0cc48ba4e3049bd9ce4",
         "start_block": 10130000,
-        "description": "PZETHUSDC",
+        "description": "pzETHUSDC",
         "decimals": 9
     },
     {
