@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 
 use crate::config::env::ev;
 use crate::error::Error;
@@ -31,7 +31,7 @@ pub async fn initialize_pangea_indexer(
         let store = match trading_engine.get_store(&config.symbol) {
             Some(s) => s,
             None => {
-                log::error!("No CandleStore found for symbol {}", config.symbol);
+                error!("No CandleStore found for symbol {}", config.symbol);
                 continue;
             }
         };
@@ -41,10 +41,10 @@ pub async fn initialize_pangea_indexer(
 
     tokio::select! {
         _ = shutdown.recv() => {
-            log::info!("Shutdown signal received in indexer.");
+            info!("Shutdown signal received in indexer.");
         }
         _ = futures::future::join_all(tasks) => {
-            log::info!("All indexer tasks completed.");
+            info!("All indexer tasks completed.");
         }
     }
 
@@ -56,7 +56,6 @@ async fn process_events_for_pair(
     store: Arc<CandleStore>,
 ) -> Result<(), Error> {
     let client = create_pangea_client().await?;
-
     let contract_h256 = H256::from_str(&config.contract_id)?;
 
     let last_processed_block = fetch_historical_data(
@@ -68,25 +67,14 @@ async fn process_events_for_pair(
     )
     .await?;
 
-    log::info!(
+    info!(
         "Completed historical data fetch for {}. Last processed block: {}",
-        config.symbol,
-        last_processed_block
+        config.symbol, last_processed_block
     );
 
-    listen_for_new_deltas(
-        &client,
-        &store,
-        last_processed_block,
-        contract_h256,
-        config.symbol,
-    )
-    .await?;
-
-    Ok(())
+    listen_for_new_deltas(&store, last_processed_block, contract_h256, config.symbol).await
 }
 
-/// Create a Pangea WebSocket client.
 async fn create_pangea_client() -> Result<Client<WsProvider>, Error> {
     let username = ev("PANGEA_USERNAME")?;
     let password = ev("PANGEA_PASSWORD")?;
@@ -102,7 +90,6 @@ async fn create_pangea_client() -> Result<Client<WsProvider>, Error> {
     Ok(client)
 }
 
-/// Fetch historical data for a contract without batching.
 async fn fetch_historical_data(
     client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
@@ -129,39 +116,44 @@ async fn fetch_historical_data(
         ..Default::default()
     };
 
-    let stream = client
-        .get_fuel_spark_orders_by_format(request, Format::JsonStream, false)
-        .await?;
-
+    let stream = client.get_fuel_spark_orders_by_format(request, Format::JsonStream, false).await?;
     pangea_client::futures::pin_mut!(stream);
 
     while let Some(data) = stream.next().await {
-        match data {
-            Ok(data) => {
-                let order: PangeaOrderEvent = serde_json::from_slice(&data)?;
+        if let Ok(data) = data {
+            if let Ok(order) = serde_json::from_slice::<PangeaOrderEvent>(&data) {
                 handle_order_event(candle_store.clone(), order, symbol.clone()).await;
+            } else {
+                error!("Failed to deserialize order event");
             }
-            Err(e) => {
-                error!("Error processing historical data stream: {}", e);
-                break;
-            }
+        } else {
+            error!("Stream error while processing historical data");
         }
     }
 
     Ok(target_latest_block)
 }
 
-/// Listen for new events (deltas) without unnecessary reconnects.
 async fn listen_for_new_deltas(
-    client: &Client<WsProvider>,
     candle_store: &Arc<CandleStore>,
     mut last_processed_block: i64,
     contract_h256: H256,
     symbol: String,
 ) -> Result<(), Error> {
     let mut retry_delay = Duration::from_secs(1);
+    let max_backoff = Duration::from_secs(60);
 
     loop {
+        let client = match create_pangea_client().await {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Failed to create Pangea client: {}", e);
+                sleep(retry_delay).await;
+                retry_delay = (retry_delay * 2).min(max_backoff);
+                continue;
+            }
+        };
+
         let fuel_chain = match ev("CHAIN")?.as_str() {
             "FUEL" => ChainId::FUEL,
             _ => ChainId::FUELTESTNET,
@@ -175,39 +167,29 @@ async fn listen_for_new_deltas(
             ..Default::default()
         };
 
-        match client
-            .get_fuel_spark_orders_by_format(request, Format::JsonStream, true)
-            .await
-        {
-            Ok(stream) => {
+        match timeout(Duration::from_secs(10), client.get_fuel_spark_orders_by_format(request, Format::JsonStream, true)).await {
+            Ok(Ok(stream)) => {
                 pangea_client::futures::pin_mut!(stream);
-                retry_delay = Duration::from_secs(1); // Reset retry delay on success
-
+                retry_delay = Duration::from_secs(1);
                 while let Some(data) = stream.next().await {
-                    match data {
-                        Ok(data) => {
-                            let order_event: PangeaOrderEvent = serde_json::from_slice(&data)?;
+                    if let Ok(data) = data {
+                        if let Ok(order_event) = serde_json::from_slice::<PangeaOrderEvent>(&data) {
                             last_processed_block = order_event.block_number;
-                            handle_order_event(candle_store.clone(), order_event, symbol.clone())
-                                .await;
-                        }
-                        Err(e) => {
-                            error!("Stream error: {}", e);
-                            break; // Exit the stream and reconnect
+                            handle_order_event(candle_store.clone(), order_event, symbol.clone()).await;
+                        } else {
+                            error!("Failed to deserialize order event");
                         }
                     }
                 }
             }
-            Err(e) => {
-                error!("Failed to subscribe to new deltas: {}", e);
-                sleep(retry_delay).await;
-                retry_delay = (retry_delay * 2).min(Duration::from_secs(60));
-            }
+            _ => error!("Failed to subscribe to new deltas, retrying..."),
         }
+        sleep(retry_delay).await;
+        retry_delay = (retry_delay * 2).min(max_backoff);
     }
 }
 
-/// Get the latest block number for a chain.
+
 async fn get_latest_block(chain_id: ChainId) -> Result<i64, Error> {
     let provider_url = match chain_id {
         ChainId::FUEL => "mainnet.fuel.network",

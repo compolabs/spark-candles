@@ -2,7 +2,6 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-/// Representation of a single candle (OHLCV).
 #[derive(Debug, Clone)]
 pub struct Candle {
     pub open: f64,
@@ -10,45 +9,36 @@ pub struct Candle {
     pub low: f64,
     pub close: f64,
     pub volume: f64,
-    pub timestamp: DateTime<Utc>, // Start time of the candle interval
+    pub timestamp: DateTime<Utc>,
 }
 
-/// Main store for storing and managing candles.
 #[derive(Debug)]
 pub struct CandleStore {
-    // candles: symbol -> interval -> Vec<Candle>
     pub candles: RwLock<HashMap<String, HashMap<u64, Vec<Candle>>>>,
 }
 
 impl CandleStore {
-    /// Creates a new empty `CandleStore`.
     pub fn new() -> Self {
         Self {
             candles: RwLock::new(HashMap::new()),
         }
     }
 
-    /// Adds a price and volume to the candle store.
     pub fn add_price(&self, symbol: &str, interval: u64, price: f64, volume: f64, event_time: i64) {
         let mut candles = self.candles.write().unwrap();
 
-        // Get the candles for the specified symbol and interval
         let symbol_candles = candles.entry(symbol.to_string()).or_default();
         let candle_list = symbol_candles.entry(interval).or_default();
 
-        // Convert event_time to DateTime<Utc>
         let event_datetime = Utc
             .timestamp_opt(event_time, 0)
             .single()
             .expect("Invalid timestamp");
 
-        // Calculate the period start time
         let period_start = Self::get_period_start(event_datetime, interval);
 
-        // Check the last candle
         if let Some(last_candle) = candle_list.last_mut() {
             if last_candle.timestamp == period_start {
-                // Update the current candle
                 last_candle.high = last_candle.high.max(price);
                 last_candle.low = last_candle.low.min(price);
                 last_candle.close = price;
@@ -57,12 +47,9 @@ impl CandleStore {
             }
         }
 
-        // Fill missing candles if there is a gap
         if let Some(last_candle) = candle_list.last() {
-            // Extract needed values
             let mut missing_time = last_candle.timestamp + Duration::seconds(interval as i64);
             let last_close = last_candle.close;
-            // Immutable borrow ends here
 
             while missing_time < period_start {
                 let empty_candle = Candle {
@@ -73,12 +60,11 @@ impl CandleStore {
                     volume: 0.0,
                     timestamp: missing_time,
                 };
-                candle_list.push(empty_candle); // Mutable borrow occurs here
+                candle_list.push(empty_candle);
                 missing_time += Duration::seconds(interval as i64);
             }
         }
 
-        // Create a new candle
         let new_candle = Candle {
             open: price,
             high: price,
@@ -89,33 +75,26 @@ impl CandleStore {
         };
         candle_list.push(new_candle);
 
-        // Limit the number of stored candles
         const MAX_CANDLES: usize = 1000000;
         if candle_list.len() > MAX_CANDLES {
             candle_list.drain(0..(candle_list.len() - MAX_CANDLES));
         }
     }
 
-    /// Calculates the period start time for a given event time and interval.
     fn get_period_start(event_datetime: DateTime<Utc>, interval: u64) -> DateTime<Utc> {
         match interval {
             60 | 180 | 300 | 900 | 3600 => {
-                // For minute and hourly intervals
                 let timestamp = event_datetime.timestamp();
                 let period = timestamp - (timestamp % interval as i64);
                 DateTime::from_timestamp(period, 0).expect("Invalid timestamp")
             }
-            86400 => {
-                // Daily intervals
-                event_datetime
-                    .date_naive()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap()
-                    .and_local_timezone(Utc)
-                    .unwrap()
-            }
+            86400 => event_datetime
+                .date_naive()
+                .and_hms_opt(0, 0, 0)
+                .unwrap()
+                .and_local_timezone(Utc)
+                .unwrap(),
             604800 => {
-                // Weekly intervals (starting on Monday)
                 let naive_date = event_datetime.date_naive();
                 let weekday = naive_date.weekday().num_days_from_monday();
                 let start_of_week = naive_date - Duration::days(weekday as i64);
@@ -126,7 +105,6 @@ impl CandleStore {
                     .unwrap()
             }
             _ => {
-                // For other intervals, round down to the interval
                 let timestamp = event_datetime.timestamp();
                 let period = timestamp - (timestamp % interval as i64);
                 DateTime::from_timestamp(period, 0).expect("Invalid timestamp")
@@ -134,7 +112,6 @@ impl CandleStore {
         }
     }
 
-    /// Retrieves the last `count` candles for the given symbol and interval.
     pub fn get_candles(&self, symbol: &str, interval: u64, count: usize) -> Vec<Candle> {
         let candles = self.candles.read().unwrap();
         if let Some(symbol_candles) = candles.get(symbol) {
@@ -145,7 +122,6 @@ impl CandleStore {
         vec![]
     }
 
-    /// Retrieves candles within a specified time range.
     pub fn get_candles_in_time_range(
         &self,
         symbol: &str,
@@ -171,7 +147,6 @@ impl CandleStore {
         }
     }
 
-    /// Returns the minimum and maximum `timestamp` from the store.
     pub fn get_min_max_timestamps(&self) -> Option<(i64, i64)> {
         let candles = self.candles.read().unwrap();
         if candles.is_empty() {
