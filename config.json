@@ -82,5 +82,12 @@
         "start_block": 10130000,
         "description": "USDTETH",
         "decimals": 9
+    },
+    {
+        "symbol": "tETHtUSDC",
+        "contract_id": "0x6eb7a35c43a8eae0a2aeaf8c68b7d2d1cc7d2481d97abb8f68e4fb3cbab86a2a",
+        "start_block": 10130000,
+        "description": "tETHtUSDC",
+        "decimals": 9
     }
 ]
