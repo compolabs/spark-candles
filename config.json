@@ -42,13 +42,6 @@
         "decimals": 9
     },
     {
-        "symbol": "TRUMPETH",
-        "contract_id": "0x272bc2c2d065e8ca22f0473e328f403bb1ba2e85d71f5fa51dcb83393714ff01",
-        "start_block": 10130000,
-        "description": "TRUMPETH",
-        "decimals": 9
-    },
-    {
         "symbol": "USDTUSDC",
         "contract_id": "0xe4e4844f78e2e470b590d0c76ffc9f4422a87317377813a181a02c60a60bc774",
         "start_block": 10130000,
