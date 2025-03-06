@@ -4,7 +4,7 @@ fullnameOverride: spark-candles
 envFromSecret: spark-candles
 
 image:
-  repository: harbor.infra.sprk.fi/sprk/spark-candles
+  repository: harbor.infra.v12.trade/sprk/spark-candles
   pullPolicy: IfNotPresent
 
 livenessProbe:
