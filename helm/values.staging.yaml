@@ -1,14 +1,14 @@
 ingress:
   enabled: true
   hosts:
-    - host: spark-candles.staging.sprk.fi
+    - host: spark-candles.staging.v12.trade
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: spark-candles-tls
       hosts:
-        - spark-candles.staging.sprk.fi
+        - spark-candles.staging.v12.trade
 
 vault:
   mount: staging
